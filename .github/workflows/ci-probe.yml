@@ -59,6 +59,13 @@ jobs:
             xcodebuild -showsdks 2>&1 | grep -E 'iOS|watchOS|tvOS|visionOS' || true
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+          # 同样回显到 stdout，保证 job log 里可见
+          echo "===A 环境事实==="
+          sw_vers
+          uname -a
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version 2>/dev/null || true
+          ls /Applications | grep -i '^Xcode' || true
 
       # ── B. .NET 9 SDK + 公开代码编译 ────────────────────────────────
       - name: B · 安装 .NET 9 SDK
@@ -99,8 +106,15 @@ jobs:
         run: |
           mkdir -p /tmp/stub && cd /tmp/stub
           dotnet new classlib -n sts2 -o . --force -f net9.0
+          # 同法生成补丁库桩：sts2.csproj 的 <TrimmerRootAssembly Include="STS2MobileIos" />
+          # 要求 ILC 输入里必须有这个程序集（真链路里它由 build-ios.sh 步骤 2 从私有物料织入）
+          mkdir -p stubpatch && cd stubpatch
+          dotnet new classlib -n STS2MobileIos -o . --force -f net9.0
+          dotnet build -c Release -o "$GITHUB_WORKSPACE/ios-export/prebuilt/deps" --nologo -v m
+          cd /tmp/stub
           dotnet build -c Release -o "$GITHUB_WORKSPACE/ios-export/prebuilt" --nologo -v m
           test -f "$GITHUB_WORKSPACE/ios-export/prebuilt/sts2.dll"
+          test -f "$GITHUB_WORKSPACE/ios-export/prebuilt/deps/STS2MobileIos.dll"
           cd "$GITHUB_WORKSPACE/ios-export"
           TC0=$(date +%s)
           dotnet publish sts2.csproj -c ExportRelease -r ios-arm64 \
