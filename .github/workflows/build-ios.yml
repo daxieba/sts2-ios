@@ -95,6 +95,21 @@ jobs:
           rm -f /tmp/private-inputs.tar.gz.gpg /tmp/private-inputs.tar.gz
           ls -R "$HOME/sts2-private" | head -40
 
+      - name: 备齐 game-refs/（补丁库编译依赖）
+        run: |
+          # STS2MobileIos.csproj <Reference> ../../game-refs/{sts2.dll,GodotSharp.dll}
+          # · sts2.dll：私有物料（用户 Steam 拷贝）
+          # · GodotSharp.dll：随上面下载的 Godot mono 发行物 / NuGet 还原包，公开物料
+          mkdir -p game-refs
+          DLL=$(find "$HOME/sts2-private" -name 'sts2.dll' | head -1)
+          cp "$DLL" game-refs/sts2.dll
+          GS=$(find "$HOME/.nuget/packages/godotsharp" "$HOME/.dotnet9" -name 'GodotSharp.dll' 2>/dev/null | head -1)
+          # NuGet 包里没有就从 Godot app 里捞
+          [ -n "$GS" ] || GS=$(find /tmp/godot-bin -name 'GodotSharp.dll' | head -1)
+          [ -n "$GS" ] || { echo "❌ 找不到 GodotSharp.dll"; exit 1; }
+          cp "$GS" game-refs/GodotSharp.dll
+          ls -la game-refs/
+
       - name: D-08 织入前体检 · sts2.dll 哈希对基线
         run: |
           # 基线文件 private-baseline.sha256 在仓库里（哈希不是版权物料，可公开），
