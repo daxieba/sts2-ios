@@ -104,15 +104,19 @@ jobs:
       # 但完整验证：Godot.NET.Sdk 4.5.1 还原、ILC 交叉编译、ios-arm64 runtime pack。
       - name: C · 桩程序集 NativeAOT ios-arm64 publish
         run: |
-          mkdir -p /tmp/stub && cd /tmp/stub
-          dotnet new classlib -n sts2 -o . --force -f net9.0
-          # 同法生成补丁库桩：sts2.csproj 的 <TrimmerRootAssembly Include="STS2MobileIos" />
+          # 两个桩目录完全隔离（含 obj），避免 -o 共享输出时 obj 交叉引用导致重复特性编译错误
+          mkdir -p /tmp/stub-patch && cd /tmp/stub-patch
+          # 补丁库桩：sts2.csproj 的 <TrimmerRootAssembly Include="STS2MobileIos" />
           # 要求 ILC 输入里必须有这个程序集（真链路里它由 build-ios.sh 步骤 2 从私有物料织入）
-          mkdir -p stubpatch && cd stubpatch
           dotnet new classlib -n STS2MobileIos -o . --force -f net9.0
-          dotnet build -c Release -o "$GITHUB_WORKSPACE/ios-export/prebuilt/deps" --nologo -v m
-          cd /tmp/stub
-          dotnet build -c Release -o "$GITHUB_WORKSPACE/ios-export/prebuilt" --nologo -v m
+          dotnet build STS2MobileIos.csproj -c Release \
+            -o "$GITHUB_WORKSPACE/ios-export/prebuilt/deps" \
+            -p:BaseIntermediateOutputPath=obj-patch/ --nologo -v m
+          mkdir -p /tmp/stub-main && cd /tmp/stub-main
+          dotnet new classlib -n sts2 -o . --force -f net9.0
+          dotnet build sts2.csproj -c Release \
+            -o "$GITHUB_WORKSPACE/ios-export/prebuilt" \
+            -p:BaseIntermediateOutputPath=obj-main/ --nologo -v m
           test -f "$GITHUB_WORKSPACE/ios-export/prebuilt/sts2.dll"
           test -f "$GITHUB_WORKSPACE/ios-export/prebuilt/deps/STS2MobileIos.dll"
           cd "$GITHUB_WORKSPACE/ios-export"
