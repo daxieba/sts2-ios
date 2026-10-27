@@ -6,7 +6,7 @@
 #
 # 验证项（每项带耗时记录，结果写入 GITHUB_STEP_SUMMARY）：
 #   A. runner 环境：macOS 版本、架构、Xcode 版本、iOS SDK
-#   B. .NET 9 SDK 安装 + 织入器/补丁库编译（仓库公开代码）
+#   B. .NET 9 SDK 安装 + 织入器编译（仓库公开代码；补丁库依赖 game-refs/ 私有物料，不在此验证）
 #   C. 桩程序集 NativeAOT ios-arm64 publish → sts2.dylib（全链路最难一步，用空壳 dll 代替真品）
 #   D. Godot 4.5.1 mono + mono 版 iOS 导出模板的获取与 headless 运行
 #   E. 最小 Godot 工程 headless iOS 导出（Godot → Xcode → ipa 机制）
@@ -69,12 +69,14 @@ jobs:
           echo "DOTNET_ROOT=$HOME/.dotnet9" >> "$GITHUB_ENV"
           dotnet --info | head -20
 
-      - name: B · 编译织入器 + 补丁库
+      - name: B · 编译织入器（公开代码）
         run: |
+          # STS2Weaver 是纯公开代码（Mono.Cecil 织入器），可也应在公开 CI 上编译验证。
           dotnet build src/STS2Weaver -c Release --nologo -v m
-          dotnet build src/STS2MobileIos -c Release --nologo -v m
           test -f src/STS2Weaver/bin/Release/net9.0/STS2Weaver.dll
-          test -f src/STS2MobileIos/bin/Release/net9.0/STS2MobileIos.dll
+          # 补丁库 STS2MobileIos 不在此编译：它 <Reference> 了 ../../game-refs/ 下的
+          # sts2.dll（游戏本体）与 GodotSharp.dll，属私有物料，在全链路工作流里编译。
+          ls game-refs 2>/dev/null && echo "⚠️ game-refs 存在（不应出现于公开 CI）" || echo "game-refs/ 不存在（符合预期：补丁库编译属私有链路）"
 
       - name: B · 小结
         run: |
@@ -85,7 +87,7 @@ jobs:
             echo '|---|---|'
             echo "| .NET SDK | $(dotnet --list-sdks | tr '\n' ' ') |"
             echo '| STS2Weaver 编译 | ✅ |'
-            echo '| STS2MobileIos 编译 | ✅ |'
+            echo '| STS2MobileIos 编译 | ⏭️ 属私有链路（依赖 game-refs/ 的 sts2.dll + GodotSharp.dll），见全链路工作流 |'
             echo "| 耗时 | $(( $(date +%s) - T0 ))s（自任务开始累计） |"
           } >> "$GITHUB_STEP_SUMMARY"
 
