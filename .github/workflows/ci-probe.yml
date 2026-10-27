@@ -157,7 +157,10 @@ jobs:
           curl -fsSL -o /tmp/godot.zip "https://github.com/godotengine/godot/releases/download/$GD/Godot_v4.5.1-stable_mono_macos.universal.zip"
           curl -fsSL -o /tmp/templates.tpz "https://github.com/godotengine/godot/releases/download/$GD/Godot_v4.5.1-stable_mono_export_templates.tpz"
           unzip -q /tmp/godot.zip -d /tmp/godot-bin
-          GODOT=$(find /tmp/godot-bin -maxdepth 2 -type f -name 'Godot*' ! -name '*.zip' | head -1)
+          # mono macos 包是 Godot_mono.app/Contents/MacOS/Godot（目录深度 3+），find 要够深
+          GODOT=$(find /tmp/godot-bin -type f -name 'Godot' | head -1)
+          [ -n "$GODOT" ] || GODOT=$(find /tmp/godot-bin -type f -name 'Godot*' ! -name '*.zip' ! -name '*.dll' | head -1)
+          [ -n "$GODOT" ] || { echo "❌ 未在解压结果中找到 Godot 可执行文件"; ls -R /tmp/godot-bin | head -20; exit 1; }
           chmod +x "$GODOT"
           echo "GODOT=$GODOT" >> "$GITHUB_ENV"
           TPL_DIR="$HOME/Library/Application Support/Godot/export_templates/4.5.1.stable.mono"
