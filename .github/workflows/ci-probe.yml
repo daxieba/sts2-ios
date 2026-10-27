@@ -194,9 +194,12 @@ jobs:
             | base64 -d > project.godot
           echo 'W2dkX3NjZW5lIGxvYWRfc3RlcHM9MSBmb3JtYXQ9M10KW25vZGUgbmFtZT0iUm9vdCIgdHlwZT0iQ29udHJvbCJdCg==' \
             | base64 -d > main.tscn
-          echo 'W3ByZXNldC4wXQpuYW1lPSJpT1MiCnBsYXRmb3JtPSJpT1MiCnJ1bm5hYmxlPXRydWUKYWR2YW5jZWRfb3B0aW9ucz1mYWxzZQpkZWRpY2F0ZWRfc2VydmVyPWZhbHNlCmN1c3RvbV9mZWF0dXJlcz0iIgpleHBvcnRfZmlsdGVyPSJhbGxfcmVzb3VyY2VzIgppbmNsdWRlX2ZpbHRlcj0iIgpleGNsdWRlX2ZpbHRlcj0iIgpleHBvcnRfcGF0aD0iYnVpbGQvQ0lQcm9iZS5pcGEiCnBhdGNoZXM9UGFja2VkU3RyaW5nQXJyYXkoKQplbmNyeXB0aW9uX2luY2x1ZGVfZmlsdGVycz0iIgplbmNyeXB0aW9uX2V4Y2x1ZGVfZmlsdGVycz0iIgpzZWVkPTAKZW5jcnlwdF9wY2s9ZmFsc2UKZW5jcnlwdF9kaXJlY3Rvcnk9ZmFsc2UKc2NyaXB0X2V4cG9ydF9tb2RlPTAKCltwcmVzZXQuMC5vcHRpb25zXQpjdXN0b21fdGVtcGxhdGUvZGVidWc9IiIKY3VzdG9tX3RlbXBsYXRlL3JlbGVhc2U9IiIKYXJjaGl0ZWN0dXJlcy9hcm02ND10cnVlCmFwcGxpY2F0aW9uL2FwcF9zdG9yZV90ZWFtX2lkPSIiCmFwcGxpY2F0aW9uL2J1bmRsZV9pZGVudGlmaWVyPSJjb20uZXhhbXBsZS5jaXByb2JlIgphcHBsaWNhdGlvbi9zaWduYXR1cmU9IiIKYXBwbGljYXRpb24vc2hvcnRfdmVyc2lvbj0iMC4wLjEiCmFwcGxpY2F0aW9uL3ZlcnNpb249IjAuMC4xIgphcHBsaWNhdGlvbi9taW5faW9zX3ZlcnNpb249IjE0LjAiCg==' \
+          echo 'W3ByZXNldC4wXQpuYW1lPSJpT1MiCnBsYXRmb3JtPSJpT1MiCnJ1bm5hYmxlPXRydWUKYWR2YW5jZWRfb3B0aW9ucz10cnVlCmRlZGljYXRlZF9zZXJ2ZXI9ZmFsc2UKY3VzdG9tX2ZlYXR1cmVzPSIiCmV4cG9ydF9maWx0ZXI9ImFsbF9yZXNvdXJjZXMiCmluY2x1ZGVfZmlsdGVyPSIiCmV4Y2x1ZGVfZmlsdGVyPSIiCmV4cG9ydF9wYXRoPSJidWlsZC9DSVByb2JlLmlwYSIKcGF0Y2hlcz1QYWNrZWRTdHJpbmdBcnJheSgpCmVuY3J5cHRpb25faW5jbHVkZV9maWx0ZXJzPSIiCmVuY3J5cHRpb25fZXhjbHVkZV9maWx0ZXJzPSIiCnNlZWQ9MAplbmNyeXB0X3Bjaz1mYWxzZQplbmNyeXB0X2RpcmVjdG9yeT1mYWxzZQpzY3JpcHRfZXhwb3J0X21vZGU9MAoKW3ByZXNldC4wLm9wdGlvbnNdCmN1c3RvbV90ZW1wbGF0ZS9kZWJ1Zz0iIgpjdXN0b21fdGVtcGxhdGUvcmVsZWFzZT0iIgphcmNoaXRlY3R1cmVzL2FybTY0PXRydWUKYXBwbGljYXRpb24vYXBwX3N0b3JlX3RlYW1faWQ9IlhYWFhYWFhYWFgiCmFwcGxpY2F0aW9uL2J1bmRsZV9pZGVudGlmaWVyPSJjb20uZXhhbXBsZS5jaXByb2JlIgphcHBsaWNhdGlvbi9zaWduYXR1cmU9IiIKYXBwbGljYXRpb24vc2hvcnRfdmVyc2lvbj0iMC4wLjEiCmFwcGxpY2F0aW9uL3ZlcnNpb249IjAuMC4xIgphcHBsaWNhdGlvbi9taW5faW9zX3ZlcnNpb249IjE0LjAiCg==' \
             | base64 -d > export_presets.cfg
-          cat project.godot main.tscn export_presets.cfg | head -20
+          # 本轮试验：team id 填假值。真链路里这是 build-ios.sh 之外 CI 必须注入的配置点
+          # （底座 preset 里 app_store_team_id 为空，靠 Xcode 侧事后改 pbxproj 兜底，
+          # 但 Godot 导出本身在有 C# 的工程上是 experimental 提示 + team id 必填）
+          cat export_presets.cfg | grep app_store_team_id
           TE0=$(date +%s)
           "$GODOT" --headless --path "$PROBE" --export-release "iOS" build/CIProbe.ipa 2>&1 | tee export.log
           ERC=${PIPESTATUS[0]}
