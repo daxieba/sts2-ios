@@ -133,6 +133,14 @@ jobs:
           STS2_TEAM_ID: ${{ secrets.STS2_TEAM_ID }}
           STS2_BUNDLE_ID: ${{ secrets.STS2_BUNDLE_ID }}
         run: |
+          # Godot 导出本身要求 preset 里有 team id（源码层 required option，
+          # 缺了 export 直接失败，报「App Store Team ID not specified」）；
+          # 底座仓库的 export_presets.cfg 该字段为空，必须先注入。
+          sed -i '' "s|application/app_store_team_id=\".*\"|application/app_store_team_id=\"${STS2_TEAM_ID}\"|" \
+            ios-export/export_presets.cfg
+          sed -i '' "s|application/bundle_identifier=\".*\"|application/bundle_identifier=\"${STS2_BUNDLE_ID}\"|" \
+            ios-export/export_presets.cfg
+          grep -E "app_store_team_id|bundle_identifier" ios-export/export_presets.cfg
           DLL=$(find "$HOME/sts2-private" -name 'sts2.dll' | head -1)
           GAMEDIR=$(dirname "$DLL")
           cat > ios-export/config.sh <<EOF
