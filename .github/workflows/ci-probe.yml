@@ -204,6 +204,7 @@ jobs:
           # 但 Godot 导出本身在有 C# 的工程上是 experimental 提示 + team id 必填）
           cat export_presets.cfg | grep app_store_team_id
           TE0=$(date +%s)
+          mkdir -p build
           "$GODOT" --headless --path "$PROBE" --export-release "iOS" build/CIProbe.ipa 2>&1 | tee export.log
           ERC=${PIPESTATUS[0]}
           TE1=$(date +%s)
