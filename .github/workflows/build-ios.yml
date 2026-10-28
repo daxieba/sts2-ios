@@ -136,11 +136,18 @@ jobs:
           # Godot 导出本身要求 preset 里有 team id（源码层 required option，
           # 缺了 export 直接失败，报「App Store Team ID not specified」）；
           # 底座仓库的 export_presets.cfg 该字段为空，必须先注入。
+          # 同时把发布签名身份从默认的 "Apple Distribution" 改成 "Apple Development"
+          # （Godot 源码 _fix_config_file 的默认值与自动签名冲突，xcodebuild archive
+          # 会报「conflicting provisioning settings」；底座 build-ios.sh 步骤 5.15 用
+          # sed 修生成后的 pbxproj，这里在导出前从源头修）。
           sed -i '' "s|application/app_store_team_id=\".*\"|application/app_store_team_id=\"${STS2_TEAM_ID}\"|" \
             ios-export/export_presets.cfg
           sed -i '' "s|application/bundle_identifier=\".*\"|application/bundle_identifier=\"${STS2_BUNDLE_ID}\"|" \
             ios-export/export_presets.cfg
-          grep -E "app_store_team_id|bundle_identifier" ios-export/export_presets.cfg
+          sed -i '' "s|application/signature=\".*\"|application/signature=\"-\"|" \
+            ios-export/export_presets.cfg
+          printf 'application/code_sign_identity_release="Apple Development"\n' >> ios-export/export_presets.cfg
+          grep -E "app_store_team_id|bundle_identifier|signature|code_sign_identity" ios-export/export_presets.cfg
           DLL=$(find "$HOME/sts2-private" -name 'sts2.dll' | head -1)
           GAMEDIR=$(dirname "$DLL")
           cat > ios-export/config.sh <<EOF
@@ -181,13 +188,26 @@ jobs:
       - name: 签名 · ad-hoc（免费账号，产物交 SideStore 重签）
         if: ${{ env.SIGN_MODE == 'ad-hoc' }}
         run: |
-          # Godot 导出的 build/StS2.xcodeproj 无头构建为未签名 .app：
-          #   xcodebuild archive（CODE_SIGNING_ALLOWED=NO）→ codesign -s - 各 framework 与 .app
-          # 内存权限 entitlement 由 build-ios.sh 步骤 5.3 写好（ent_mem.plist），
-          # ad-hoc 签名时一并带上；SideStore 重签的 profile 需含该 entitlement 才生效。
-          # 具体命令由 T07 在首次实跑后落定，此处为占位。
-          echo "TODO(T07): xcodebuild archive + codesign -s - --entitlements ent_mem.plist"
-          exit 1
+          # T05 已在探针（E2 步）验证过的完整无账号路径：
+          #   xcodebuild 无签名构建 → codesign -s - ad-hoc 签名（含 entitlement）→ Payload 打包
+          cd ios-export
+          xcodebuild -project build/StS2.xcodeproj -scheme StS2 -sdk iphoneos \
+            -configuration Release CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+            -derivedDataPath build/DD -destination generic/platform=ios build
+          APP=$(find build/DD -type d -name 'StS2.app' | grep 'Release-iphoneos' | head -1)
+          [ -n "$APP" ] || { echo "❌ 无签名构建未产出 StS2.app"; exit 1; }
+          ENT=$(find .work -name 'ent_mem.plist' | head -1)
+          [ -n "$ENT" ] || { echo "❌ 缺内存权限 entitlements（build-ios.sh 步骤 5.3 应产出）"; exit 1; }
+          # 各 framework 与主程序分别签名；entitlement 只加在 .app 主可执行文件上
+          for fw in "$APP"/Frameworks/*.framework "$APP"; do
+            codesign -f -s - --generate-entitlement-der "$fw"
+          done
+          codesign -f -s - --generate-entitlement-der --entitlements "$ENT" "$APP"
+          codesign -dv "$APP" 2>&1 | grep -E 'Identifier|Signature'
+          rm -rf Payload && mkdir Payload && cp -R "$APP" Payload/
+          zip -qr build/StS2-adhoc.ipa Payload
+          echo "✅ ad-hoc ipa: $(du -h build/StS2-adhoc.ipa | cut -f1)"
+          echo "⚠️ 交设备端 SideStore 重签后才能装；重签 profile 需含 increased-memory-limit"
 
       - name: 签名 · developer（注入证书 + provisioning profile）
         if: ${{ env.SIGN_MODE == 'developer' }}
