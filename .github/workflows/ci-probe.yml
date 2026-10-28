@@ -230,6 +230,46 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
+      # ── E2. 兜底：xcodebuild 无签名构建 + ad-hoc 签名 → ipa ──────────
+      # Godot 导出在无 Apple 账号的 runner 上会停在 xcodebuild archive 的
+      # 签名身份校验（免费账号无头 CI 的已知边界）。兜底路径 = T07 免费
+      # 账号路线要走的同一条路：对已生成的 xcodeproj 做无签名构建，手动
+      # ad-hoc 签名后按 Payload 结构打包（产物可交设备端 SideStore 重签）。
+      - name: E2 · xcodebuild 无签名构建 + ad-hoc 签名打包
+        run: |
+          PROBE=/tmp/godot-probe
+          cd "$PROBE"
+          XCP=$(ls -d build/*.xcodeproj 2>/dev/null | head -1)
+          [ -n "$XCP" ] || { echo "❌ 无 Xcode 工程（E 步未跑到框架拷贝阶段）"; exit 1; }
+          TE2=$(date +%s)
+          xcodebuild -project "$XCP" -scheme CIProbe -sdk iphoneos \
+            -configuration Release CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+            -derivedDataPath build/DD \
+            -destination generic/platform=ios build 2>&1 | tail -8
+          APP=$(find build/DD -type d -name 'CIProbe.app' | grep -E 'Release-iphoneos' | head -1)
+          [ -n "$APP" ] || { echo "❌ 无符号构建未产出 CIProbe.app"; find build/DD -name '*.app' | head; exit 1; }
+          codesign -f -s - --generate-entitlement-der "$APP"
+          codesign -dv "$APP" 2>&1 | grep -E 'Identifier|Signature' || true
+          rm -rf "$PROBE/Payload"; mkdir -p "$PROBE/Payload"
+          cp -R "$APP" "$PROBE/Payload/"
+          zip -qr "$PROBE/build/CIProbe-adhoc.ipa" Payload
+          TE3=$(date +%s)
+          {
+            echo '## E2 · xcodebuild 无签名构建 + ad-hoc 签名 → ipa'
+            echo
+            echo '| 项 | 结果 |'
+            echo '|---|---|'
+            echo "| Xcode 工程 | $XCP |"
+            echo "| 无签名构建 app | $APP |"
+            echo '| ad-hoc 签名 | ✅ |'
+            echo "| CIProbe-adhoc.ipa | $(du -h "$PROBE/build/CIProbe-adhoc.ipa" | cut -f1) |"
+            echo "| 耗时 | $((TE3 - TE2))s |"
+            echo
+            echo '```'
+            unzip -l "$PROBE/build/CIProbe-adhoc.ipa" | head -12
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       # ── F. iOS 原生交叉编译 + ad-hoc 签名 + ipa 打包 ────────────────
       # 用 clang 直编一个 iOS arm64 小程序，ad-hoc 签名后按 Payload 结构打包。
       # 这正是 SideStore/免费账号路线在无头环境下的签名机制。
