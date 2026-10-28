@@ -205,6 +205,11 @@ jobs:
           cat export_presets.cfg | grep app_store_team_id
           TE0=$(date +%s)
           mkdir -p build
+          # 生成应用图标（Godot iOS 导出的图标集全部必填，缺一个即导出失败；
+          # 键名来自 Godot 源码 platform/ios/export/export_plugin.cpp 的 icon 表）
+          echo 'aW1wb3J0IHpsaWIsIHN0cnVjdCwgb3MsIHN5cwpyb290ID0gc3lzLmFyZ3ZbMV0Kb3MubWFrZWRpcnMocm9vdCArICIvaWNvbnMiLCBleGlzdF9vaz1UcnVlKQpJQ09OX0tFWVMgPSB7CiAgICAic2V0dGluZ3NfNTh4NTgiOiA1OCwgInNldHRpbmdzXzg3eDg3IjogODcsCiAgICAibm90aWZpY2F0aW9uXzQweDQwIjogNDAsICJub3RpZmljYXRpb25fNjB4NjAiOiA2MCwKICAgICJub3RpZmljYXRpb25fNzZ4NzYiOiA3NiwgIm5vdGlmaWNhdGlvbl8xMTR4MTE0IjogMTE0LAogICAgInNwb3RsaWdodF84MHg4MCI6IDgwLCAic3BvdGxpZ2h0XzEyMHgxMjAiOiAxMjAsCiAgICAiaXBob25lXzEyMHgxMjAiOiAxMjAsICJpcGhvbmVfMTgweDE4MCI6IDE4MCwKICAgICJpcGFkXzE2N3gxNjciOiAxNjcsICJpcGFkXzE1MngxNTIiOiAxNTIsCiAgICAiaW9zXzEyOHgxMjgiOiAxMjgsICJpb3NfMTkyeDE5MiI6IDE5MiwgImlvc18xMzZ4MTM2IjogMTM2LAogICAgImFwcF9zdG9yZV8xMDI0eDEwMjQiOiAxMDI0LAp9CmRlZiBjaHVuayh0LCBkKToKICAgIGMgPSB0ICsgZAogICAgcmV0dXJuIHN0cnVjdC5wYWNrKCI+SSIsIGxlbihkKSkgKyBjICsgc3RydWN0LnBhY2soIj5JIiwgemxpYi5jcmMzMihjKSAmIDB4ZmZmZmZmZmYpCmRlZiBwbmcodyk6CiAgICByYXcgPSBiIiIKICAgIGZvciB5IGluIHJhbmdlKHcpOgogICAgICAgIHJhdyArPSBiIgAiICsgYnl0ZXMoWzcxLCAxNDAsIDE5MSwgMjU1XSkgKiB3CiAgICByZXR1cm4gKGIiolQTkcNChoKIiArIGNodW5rKGIiSUhEUiIsIHN0cnVjdC5wYWNrKCI+SUlCQkJCQiIsIHcsIHcsIDgsIDYsIDAsIDAsIDApKQogICAgICAgICAgICArIGNodW5rKGIiSURBVCIsIHpsaWIuY29tcHJlc3MocmF3KSkgKyBjaHVuaygiSUVOZCIsIGIiIikpCnByZXNldCA9IHJvb3QgKyAiL2V4cG9ydF9wcmVzZXRzLmNmZyIKd2l0aCBvcGVuKHByZXNldCwgImEiKSBhcyBmOgogICAgZm9yIGssIHMgaW4gSUNPTl9LRVlTLml0ZW1zKCk6CiAgICAgICAgcCA9ICJpY29ucy9JY29uJWQucG5nIiAlIHMKICAgICAgICB3aXRoIG9wZW4ocm9vdCArICIvIiArIHAsICJ3YiIpIGFzIGc6CiAgICAgICAgICAgIGcud3JpdGUocG5nKHMpKQogICAgICAgIGYud3JpdGUoJ2ljb25zLyVzPSJyZXM6Ly8lcyInICUgKGssIHApKQpwcmludCgiaWNvbnM6IiwgbGVuKElDT05fS0VZUykpCg==' \
+            | base64 -d > /tmp/genicons.py
+          python3 /tmp/genicons.py "$PROBE"
           "$GODOT" --headless --path "$PROBE" --export-release "iOS" build/CIProbe.ipa 2>&1 | tee export.log
           ERC=${PIPESTATUS[0]}
           TE1=$(date +%s)
