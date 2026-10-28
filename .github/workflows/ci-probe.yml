@@ -189,8 +189,11 @@ jobs:
         run: |
           PROBE=/tmp/godot-probe
           mkdir -p "$PROBE" && cd "$PROBE"
-          # 文件正文经 base64 单行写入，规避 YAML 块标量对 heredoc 缩进的限制
-          echo 'Y29uZmlnX3ZlcnNpb249NQoKW2FwcGxpY2F0aW9uXQpjb25maWcvbmFtZT0iQ0lQcm9iZSIKcnVuL21haW5fc2NlbmU9InJlczovL21haW4udHNjbiIKY29uZmlnL2ZlYXR1cmVzPVBhY2tlZFN0cmluZ0FycmF5KCI0LjUuMSIsICJGb3J3YXJkIFBsdXMiKQoKW3JlbmRlcmVyXQpyZW5kZXJlci9yZW5kZXJpbmdfbWV0aG9kPSJmb3J3YXJkX3BsdXMiCg==' \
+          # 工程正文经 base64 单行写入，规避 YAML 块标量对 heredoc 缩进的限制
+          # 注意 etc2_astc：Godot 源码 has_valid_project_configuration 在缺该开关时直接
+          # valid=false 且不附消息（editor_export_platform_apple_embedded.cpp:2276），
+          # 表现为只报「C#/.NET experimental」而掩盖真因。底座 project.godot 有此开关。
+          echo 'Y29uZmlnX3ZlcnNpb249NQoKW2FwcGxpY2F0aW9uXQpjb25maWcvbmFtZT0iQ0lQcm9iZSIKcnVuL21haW5fc2NlbmU9InJlczovL21haW4udHNjbiIKY29uZmlnL2ZlYXR1cmVzPVBhY2tlZFN0cmluZ0FycmF5KCI0LjUuMSIsICJGb3J3YXJkIFBsdXMiKQoKW3JlbmRlcmluZ10KcmVuZGVyZXIvcmVuZGVyaW5nX21ldGhvZD0iZm9yd2FyZF9wbHVzIgp0ZXh0dXJlcy92cmFtX2NvbXByZXNzaW9uL2ltcG9ydF9ldGMyX2FzdGM9dHJ1ZQo=' \
             | base64 -d > project.godot
           echo 'W2dkX3NjZW5lIGxvYWRfc3RlcHM9MSBmb3JtYXQ9M10KW25vZGUgbmFtZT0iUm9vdCIgdHlwZT0iQ29udHJvbCJdCg==' \
             | base64 -d > main.tscn
